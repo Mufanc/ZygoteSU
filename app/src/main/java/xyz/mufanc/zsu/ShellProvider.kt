@@ -100,6 +100,7 @@ class ShellProvider : ContentProvider() {
             Log.i(App.TAG, message)
 
             if (icp != null) {
+                // Todo: 适配旧版 Android 的 IContentProvider.call
                 val result = icp.call(
                     Refine.unsafeCast(AttributionSourceHidden(Binder.getCallingUid(), resolveCallingPackage(), null)),
                     AUTHORITY,
