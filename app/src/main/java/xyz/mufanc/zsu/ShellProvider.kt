@@ -5,10 +5,7 @@ import android.app.ActivityManagerHidden
 import android.content.*
 import android.database.Cursor
 import android.net.Uri
-import android.os.Binder
-import android.os.Bundle
-import android.os.IBinder
-import android.os.Process
+import android.os.*
 import android.util.Log
 import dev.rikka.tools.refine.Refine
 import org.lsposed.hiddenapibypass.HiddenApiBypass
@@ -21,19 +18,11 @@ class ShellProvider : ContentProvider() {
     private var mService: IRootService? = null
 
     private val connection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            Log.i("zsu", "Get service: $service")
-//            mService = IRootService.Stub.asInterface(service)
-            mLatch.countDown()
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            Log.i("zsu", "Service disconnected!")
-            mService = null
-        }
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) = Unit
+        override fun onServiceDisconnected(name: ComponentName?) = Unit
     }
 
-    override fun call(method: String, filename: String?, extras: Bundle?): Bundle? {
+    override fun call(method: String, args: String?, extras: Bundle?): Bundle? {
         if (method == METHOD_PUT_SERVICE) {
             mService = IRootService.Stub.asInterface(extras?.getBinder("#"))
             Log.i(App.TAG, "Service received from daemon: $mService")
@@ -62,10 +51,20 @@ class ShellProvider : ContentProvider() {
             return Bundle().apply { putString("error", "Connect to daemon timeout!") }
         }
 
-        val argv = extras?.getStringArray("argv")
-        val envp = extras?.getStringArray("envp")
+        if (extras == null) {
+            return Bundle().apply { putString("error", "Call provider extras cannot be null!") }
+        }
 
-        return mService?.spawn(filename ?: "/system/bin/sh", argv, envp)
+        val argv = extras.getStringArray("argv")
+        val envp = extras.getStringArray("envp")
+        val fds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            extras.getParcelableArray("fds", ParcelFileDescriptor::class.java)
+        } else {
+            @Suppress("UNCHECKED_CAST")
+            extras.getParcelableArray("fds") as Array<out ParcelFileDescriptor>
+        }
+
+        return mService?.spawn(argv, envp, fds)
     }
 
     override fun onCreate(): Boolean = true

@@ -4,9 +4,7 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.util.Log
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 import java.util.concurrent.CountDownLatch
 
 object Main {
@@ -22,7 +20,19 @@ object Main {
                 ShellProvider.call(ShellProvider.METHOD_PUT_SERVICE, "", Bundle().apply { putBinder("#", RootService()) })
                 CountDownLatch(1).await()
             } else {
-                val result = ShellProvider.call(ShellProvider.METHOD_RUN_COMMAND, null, null)
+                val fds = arrayOf(
+                    ParcelFileDescriptor.fromFd(0),
+                    ParcelFileDescriptor.fromFd(1),
+                    ParcelFileDescriptor.fromFd(2),
+                )
+                val result = ShellProvider.call(
+                    ShellProvider.METHOD_RUN_COMMAND,
+                    null,
+                    Bundle().apply {
+                        putParcelableArray("fds", fds)
+                        putStringArray("argv", if (args.isEmpty()) arrayOf("/system/bin/sh") else args)
+                    }
+                )
 
                 if (result == null) {
                     println("Null reply!")
@@ -35,15 +45,8 @@ object Main {
                     return
                 }
 
-                val os = ParcelFileDescriptor.AutoCloseOutputStream(result.getParcelable("stdin"))
-                os.write((readln() + "\n").toByteArray())
-                os.flush()
-                println("command written!")
-                val acis = ParcelFileDescriptor.AutoCloseInputStream(result.getParcelable("stdout"))
-                val bis = BufferedReader(InputStreamReader(acis))
-                while (true) {
-                    println(bis.readLine())
-                }
+                println(result)
+                CountDownLatch(1).await()
             }
         } catch (err: Throwable) {
             Log.e(App.TAG, "", err)

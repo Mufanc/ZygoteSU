@@ -25,7 +25,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     }
 
     signal(SIGSYS, handler);
-    setuid(0);
+
+    gid_t id_all = 0;
+    setuid((uid_t) id_all);
+    setgid(id_all), setgroups(1, &id_all);
     if (geteuid() == 0) ALOGI("Pwned!");
 
     return JNI_VERSION_1_6;
