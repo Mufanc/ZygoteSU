@@ -13,3 +13,6 @@
 ```shell
 $ sh $(dirname $(pm path xyz.mufanc.zsu | cut -d : -f 2))/lib/*/shell.sh
 ```
+## Reference
+
+* [Magica](https://github.com/vvb2060/Magica)
